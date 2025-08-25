@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with AI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f2027;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .chat-container {
+            background: #1a2f35;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 800px;
+            height: 90vh;
+            max-height: 700px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #2d4a52;
+        }
+
+        .chat-header {
+            background: #0f4c3a;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background: #0d1f23;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 12px 18px;
+            border-radius: 18px;
+            word-wrap: break-word;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: #0f4c3a;
+            color: white;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+            background: #2d4a52;
+            color: #e0f2f1;
+            border: 1px solid #3d5a62;
+        }
+
+        .suggestions {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .suggestion-btn {
+            background: #1a3d34;
+            border: 1px solid #4caf50;
+            color: #81c784;
+            padding: 8px 12px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s;
+        }
+
+        .suggestion-btn:hover {
+            background: #2e7d32;
+            color: white;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            border-top: 1px solid #3d5a62;
+            background: #1a2f35;
+        }
+
+        .chat-input-form {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 18px;
+            border: 1px solid #3d5a62;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.2s;
+            background: #2d4a52;
+            color: #e0f2f1;
+        }
+
+        .chat-input:focus {
+            border-color: #4caf50;
+        }
+
+        .chat-input::placeholder {
+            color: #81c784;
+        }
+
+        .send-btn {
+            background: #0f4c3a;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.2s;
+        }
+
+        .send-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #81c784;
+            font-style: italic;
+        }
+
+        .typing-indicator {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #81c784;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .message.streaming {
+            position: relative;
+        }
+
+        .message.streaming::after {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #81c784;
+            border-radius: 50%;
+            margin-left: 4px;
+            animation: blink 1.4s infinite both;
+        }
+
+        @keyframes blink {
+            0%, 80%, 100% {
+                opacity: 0;
+            }
+            40% {
+                opacity: 1;
+            }
+        }
+
+        .error {
+            background: #2c1810;
+            color: #ff8a65;
+            border: 1px solid #d84315;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .message code {
+            background: #1a3d34;
+            color: #81c784;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .message pre {
+            background: #1a3d34;
+            color: #81c784;
+            padding: 12px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 8px 0;
+            border: 1px solid #2e7d32;
+        }
+
+        .message pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        .message strong {
+            font-weight: bold;
+            color: #a5d6a7;
+        }
+
+        .message em {
+            font-style: italic;
+            color: #c8e6c9;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            AI Chat Assistant
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <div class="message assistant">
+                <div>Hello! I'm your AI assistant. How can I help you today?</div>
+                <div class="suggestions">
+                    <button class="suggestion-btn" onclick="sendSuggestion('What can you help me with?')">What can you help me with?</button>
+                    <button class="suggestion-btn" onclick="sendSuggestion('Tell me a joke')">Tell me a joke</button>
+                    <button class="suggestion-btn" onclick="sendSuggestion('Explain machine learning')">Explain machine learning</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="loading" id="loading">AI is thinking...</div>
+        
+        <div class="chat-input-container">
+            <form class="chat-input-form" id="chatForm">
+                <input type="text" class="chat-input" id="messageInput" placeholder="Type your message..." autocomplete="off">
+                <button type="submit" class="send-btn" id="sendBtn">Send</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const chatForm = document.getElementById('chatForm');
+        const loading = document.getElementById('loading');
+        
+        let conversationHistory = [];
+
+        function formatMarkdown(text) {
+            return text
+                // Bold
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                // Italic
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                // Code blocks
+                .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+                // Inline code
+                .replace(/`(.*?)`/g, '<code>$1</code>')
+                // Line breaks
+                .replace(/\n/g, '<br>');
+        }
+
+        function addMessage(role, content, suggestions = []) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.innerHTML = formatMarkdown(content);
+            messageDiv.appendChild(contentDiv);
+            
+            if (suggestions && suggestions.length > 0) {
+                const suggestionsDiv = document.createElement('div');
+                suggestionsDiv.className = 'suggestions';
+                
+                suggestions.forEach(suggestion => {
+                    const btn = document.createElement('button');
+                    btn.className = 'suggestion-btn';
+                    btn.textContent = suggestion;
+                    btn.onclick = () => sendSuggestion(suggestion);
+                    suggestionsDiv.appendChild(btn);
+                });
+                
+                messageDiv.appendChild(suggestionsDiv);
+            }
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.textContent = `Error: ${message}`;
+            chatMessages.appendChild(errorDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function setLoading(isLoading) {
+            loading.style.display = isLoading ? 'block' : 'none';
+            sendBtn.disabled = isLoading;
+            messageInput.disabled = isLoading;
+        }
+
+        async function sendMessage(message) {
+            if (!message.trim()) return;
+            
+            // Add user message to conversation history
+            conversationHistory.push({ role: 'user', content: message });
+            addMessage('user', message);
+            
+            messageInput.value = '';
+            setLoading(true);
+            
+            try {
+                // Create assistant message container for streaming
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message assistant streaming';
+                const contentDiv = document.createElement('div');
+                messageDiv.appendChild(contentDiv);
+                chatMessages.appendChild(messageDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                let fullResponse = '';
+                
+                const response = await fetch('/chat/stream', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        messages: conversationHistory,
+                        max_suggestions: 4
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                
+                                if (data.type === 'content') {
+                                    fullResponse += data.data;
+                                    contentDiv.innerHTML = formatMarkdown(fullResponse);
+                                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                                } else if (data.type === 'suggestions') {
+                                    // Remove streaming indicator
+                                    messageDiv.classList.remove('streaming');
+                                    
+                                    // Add suggestions
+                                    const suggestionsDiv = document.createElement('div');
+                                    suggestionsDiv.className = 'suggestions';
+                                    
+                                    data.data.forEach(suggestion => {
+                                        const btn = document.createElement('button');
+                                        btn.className = 'suggestion-btn';
+                                        btn.textContent = suggestion;
+                                        btn.onclick = () => sendSuggestion(suggestion);
+                                        suggestionsDiv.appendChild(btn);
+                                    });
+                                    
+                                    messageDiv.appendChild(suggestionsDiv);
+                                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                                } else if (data.type === 'done') {
+                                    // Add to conversation history
+                                    conversationHistory.push({ role: 'assistant', content: fullResponse });
+                                }
+                            } catch (e) {
+                                // Skip malformed JSON
+                            }
+                        }
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Failed to get response from AI. Please try again.');
+            } finally {
+                setLoading(false);
+                messageInput.focus();
+            }
+        }
+
+        function sendSuggestion(suggestion) {
+            messageInput.value = suggestion;
+            sendMessage(suggestion);
+        }
+
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            sendMessage(messageInput.value);
+        });
+
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage(messageInput.value);
+            }
+        });
+
+        // Focus input on load
+        messageInput.focus();
+    </script>
+</body>
+</html>
