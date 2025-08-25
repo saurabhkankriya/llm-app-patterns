@@ -27,7 +27,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     messages: List[ChatMessage]
     max_suggestions: int = 4
-    topic_hint: Optional[str] = None  # optionally nudge the model
+    topic_hint: Optional[str] = None  
 
 class Suggestions(BaseModel):
     suggestions: List[str] = Field(
@@ -44,7 +44,7 @@ class Suggestions(BaseModel):
             key = s.lower()
             if key not in seen:
                 seen.add(key)
-                deduped.append(s[:140])  # keep buttons tidy
+                deduped.append(s[:140])  
         # enforce bounds
         if not (1 <= len(deduped) <= 5):
             raise ValueError("Expect between 1 and 5 suggestions")
